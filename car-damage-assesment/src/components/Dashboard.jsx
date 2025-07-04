@@ -8,55 +8,48 @@ const Dashboard = () => {
   const [uploaded, setUploaded] = useState(false);
 
   const navigate = useNavigate();
-
+  
   const handleUpload = async () => {
-    if (!videoFile) {
-      alert("Please choose a file first.");
+  if (!videoFile) {
+    alert("Please choose a file first.");
+    return;
+  }
+
+  const baseName = videoFile.name.split(".")[0];
+
+  setResult(null);
+  setUploaded(false);
+  setLoading(true);
+
+  try {
+    const response = await fetch(`/api/process-video/?vid_name=${baseName}`); // << use /api instead of full URL
+
+    const responseText = await response.text(); // read as text first
+    console.log(" Raw Response:", responseText);
+
+    if (!response.ok) {
+      alert(" Server Error:\n" + responseText);
       return;
     }
 
-    const formData = new FormData();
-    formData.append("video", videoFile);
-    const baseName = videoFile.name.split(".")[0];
-
-    setResult(null);
-    setUploaded(false);
-    setLoading(true);
-
+    // Try parsing only if response was OK
     try {
-      const uploadResponse = await fetch("http://coder-edgestg.com:8127/process-video/?vid_name=lak",{
-        method: "GET",
-        body: formData,
-      });
-
-      if (!uploadResponse.ok) {
-        const errorText = await uploadResponse.text();
-        alert("❌ Upload failed:\n" + errorText);
-        setLoading(false);
-        return;
-      }
-
-      setUploaded(true); 
-
-      const processResponse = await fetch(
-        `http://coder-edgestg.com:8127/process-video/?vid_name=lak`
-      );
-
-      if (!processResponse.ok) {
-        const errorText = await processResponse.text();
-        alert("❌ Processing failed:\n" + errorText);
-        return;
-      }
-
-      const data = await processResponse.json();
+      const data = JSON.parse(responseText);
+      setUploaded(true);
       setResult(data);
-    } catch (err) {
-      alert("Something went wrong. Check console.");
-      console.error(err);
-    } finally {
-      setLoading(false);
+    } catch (jsonErr) {
+      alert(" Could not parse JSON:\n" + jsonErr.message);
+      console.error("JSON Parse Error:", jsonErr);
     }
-  };
+  } catch (err) {
+    alert(" Request failed. See console.");
+    console.error("Request Error:", err);
+  } finally {
+    setLoading(false);
+  }
+};
+
+
 
   return (
     <div className="min-h-screen bg-[#0D1117] text-white flex flex-col justify-center items-center px-4 py-10">
@@ -90,7 +83,7 @@ const Dashboard = () => {
       
       {uploaded && videoFile && (
         <p className="text-green-400 mb-2">
-          ✅ Uploaded: {videoFile.name}
+          Uploaded: {videoFile.name}
         </p>
       )}
 
